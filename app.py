@@ -8,11 +8,29 @@ This file creates your application.
 
 import os
 from flask import Flask, render_template, request, redirect, url_for
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure
 
 app = Flask(__name__)
 
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'this_should_be_configured')
 
+###
+# Configure the database client
+# MONGODB_URI should be of the format mongodb://<dbuser>:<dbpass>@<host>:<port>/<dbname>
+###
+logger = app.logger
+mongodb_uri = os.environ['MONGODB_URI'] if 'MONGODB_URI' in os.environ else 'mongodb://localhost:27017/splatpal'
+logger.info("Attempting initial connection to Mongo at URI: %s", mongodb_uri)
+database_client = MongoClient(mongodb_uri)
+try:
+    # The official recommended hack to determine if the client connected successfully,
+    # since the constructor is non-blocking and will not raise an exception otherwise
+    database_client.admin.command('ismaster')
+except ConnectionFailure:
+    logger.critical("Unable to connect to Mongo client at URI: %s", mongodb_uri)
+    quit()
+logger.info("Successfully connected to Mongo")
 
 ###
 # Routing for your application.
