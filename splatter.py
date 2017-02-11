@@ -1,9 +1,6 @@
 
 import uuid
 
-api_key_length = 30
-
-
 class SplatService(object):
 
     def __init__(self, database):
@@ -11,12 +8,9 @@ class SplatService(object):
 
     def create_api_key(self, name, key=None):
 
-        if key is not None and len(str(key)) != api_key_length:
-            raise ValueError("API key must be %s characters long")
-
         if key is None:
             key = uuid.uuid4()
-            key = str(key)[:30]
+            key = str(key)
 
         result = self.database.APIKeys.insert_one({'name': name, 'key': key})
         return str(result.inserted_id)
