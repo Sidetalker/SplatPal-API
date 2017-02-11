@@ -10,7 +10,7 @@ import os
 from flask import Flask, render_template, request, redirect, url_for
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
-from splatter import SplatterService
+from splatter import SplatService
 
 app = Flask(__name__)
 
@@ -33,7 +33,7 @@ except ConnectionFailure:
     quit()
 logger.info("Successfully connected to Mongo")
 
-splatter_service = SplatterService(database)
+splat_service = SplatService(database)
 
 ###
 # Routing for your application.

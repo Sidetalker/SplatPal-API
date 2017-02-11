@@ -1,11 +1,10 @@
 
 import uuid
-from pymongo import MongoClient
 
 api_key_length = 30
 
 
-class SplatterService(object):
+class SplatService(object):
 
     def __init__(self, database):
         self.database = database
