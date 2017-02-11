@@ -22,6 +22,6 @@ class SplatService(object):
                 query_filter[key] = value
         return query_filter
 
-    def delete_api_key(self, doc_id=-1, name=None, key=None):
+    def delete_api_key(self, doc_id=None, name=None, key=None):
         query_filter = self._construct_optional_query({'_id': doc_id, 'name': name, 'key': key})
         return self.database.APIKeys.find_one_and_delete(query_filter)
