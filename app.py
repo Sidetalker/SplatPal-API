@@ -81,6 +81,10 @@ def page_not_found(error):
     """Custom 404 page."""
     return render_template('404.html'), 404
 
+@app.errorhandler(500)
+def server_blew_up_handler(error):
+    logger.error(error)
+    return render_template('500.html'), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

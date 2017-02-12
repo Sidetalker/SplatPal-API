@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Page Not Found{% endblock %}
+{% block title %}Internal Server Error{% endblock %}
 
 {% block css %}
 <style type="text/css">
@@ -22,7 +22,7 @@
 {% endblock %}
 
 {% block main %}
-<h1>404</h1>
-<p>That page doesn't even exist.</p>
+<h1>500</h1>
+<p>Something went seriously wrong...</p>
 <p>Why don't you just <a href="{{ url_for('about') }}">go back home</a>?</p>
 {% endblock %}
