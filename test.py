@@ -7,6 +7,7 @@ from app import app
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from splatter import SplatService
+from flask import json
 
 test_database_name = 'splatpal_test'
 
@@ -33,11 +34,6 @@ class TestApp(unittest.TestCase):
         self.app = app.test_client()
         self.app.splat_service = self.splat_service
 
-    def test_home_page_works(self):
-        rv = self.app.get('/')
-        self.assertTrue(rv.data)
-        self.assertEqual(rv.status_code, 200)
-
     def test_about_page_works(self):
         rv = self.app.get('/about/')
         self.assertTrue(rv.data)
@@ -47,15 +43,13 @@ class TestApp(unittest.TestCase):
         rv = self.app.get('/about')
         self.assertEqual(rv.status_code, 301)
 
-    def test_404_page(self):
+    def test_404(self):
         rv = self.app.get('/i-am-not-found/')
         self.assertEqual(rv.status_code, 404)
 
-    def test_static_text_file_request(self):
-        rv = self.app.get('/robots.txt')
-        self.assertTrue(rv.data)
-        self.assertEqual(rv.status_code, 200)
-        rv.close()
+    def test_post_api_key(self):
+        rv = self.app.post('/keys', data=json.dumps(dict(name='newKeyName')), content_type='application/json')
+        self.assertEqual(rv.status_code, 201)
 
     def test_create_and_find_api_key(self):
         api_key_name = 'testApiKey'
@@ -81,6 +75,14 @@ class TestApp(unittest.TestCase):
 
         found_by_doc_id_and_name = self.splat_service.find_api_key(doc_id=different_key['_id'], name=different_key['name'])
         self.assertEqual(found_by_doc_id_and_name, different_key)
+
+    def test_has_api_key(self):
+        api_key_name = 'testApiKey'
+        doc_id = self.splat_service.create_api_key(api_key_name)
+        api_key = self.splat_service.find_api_key(doc_id=doc_id)
+
+        self.assertTrue(self.splat_service.has_api_key(api_key['key']))
+        self.assertFalse(self.splat_service.has_api_key('Rammstein'))
 
     def test_delete_api_key(self):
         api_key_name = 'testApiKey'
