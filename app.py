@@ -7,7 +7,8 @@ This file creates your application.
 """
 
 import os
-from flask import Flask, render_template, request, redirect, url_for
+from functools import wraps
+from flask import Flask, render_template, request, redirect, url_for, Response, abort, make_response, jsonify
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from splatter import SplatService
@@ -15,12 +16,12 @@ from splatter import SplatService
 app = Flask(__name__)
 
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'this_should_be_configured')
+logger = app.logger
 
 ###
 # Configure the database client
 # MONGODB_URI should be of the format mongodb://<dbuser>:<dbpass>@<host>:<port>/<dbname>
 ###
-logger = app.logger
 mongodb_uri = os.environ['MONGODB_URI'] if 'MONGODB_URI' in os.environ else 'mongodb://localhost:27017/splatpal'
 logger.info("Attempting initial connection to Mongo at URI: %s", mongodb_uri)
 database = MongoClient(mongodb_uri)
@@ -39,6 +40,27 @@ splat_service = SplatService(database)
 # Routing for your application.
 ###
 
+def check_api_key(api_key):
+    return splat_service.has_api_key(api_key)
+
+def requires_api_key(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        api_key = request.authorization
+        if not api_key or not check_api_key(api_key):
+            return abort(401)
+        return f(*args, **kwargs)
+    return decorated
+
+def requires_json_payload(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        json = request.json
+        if not json:
+            return abort(400)
+        return f(*args, **kwargs)
+    return decorated
+
 @app.route('/')
 def index():
     """GET to generate a list of endpoints and their docstrings"""
@@ -53,38 +75,41 @@ def about():
     """Render the website's about page."""
     return render_template('about.html')
 
-@app.route('/get/<thing>', methods=['GET'])
-def select(thing):
-    """Retrieve a thing.
+@app.route('/keys', methods=['DELETE'])
+@requires_api_key
+@requires_json_payload
+def delete_api_key(splat_service=splat_service):
+    api_key = request.json
+    deleted = splat_service.delete_api_key(doc_id=api_key['id'], name=api_key['name'], key=api_key['key'])
+    if deleted is None:
+        return abort(404)
+    return make_response('OK', 200)
 
-    GET: Returns thing previously 'put' at given location.
-         Returns HTTP 200 on success; body is payload as-is.
-         Returns HTTP 404 when data does not exist.
-    """
-    # result = db.get(thing)
-    return 1
+@app.route('/keys', methods=['POST'])
+@requires_json_payload
+def create_api_key(splat_service=splat_service):
+    api_key = request.json
+    if 'name' not in api_key:
+        return bad_request('Name required for API key')
+    result_id = splat_service.create_api_key(name=api_key['name'], key=api_key['key'] if 'key' in api_key else None)
+    return make_response(jsonify(splat_service.find_api_key(doc_id=result_id)), 201)
 
-
-@app.after_request
-def add_header(response):
-    """
-    Add headers to both force latest IE rendering engine or Chrome Frame,
-    and also to cache the rendered page for 10 minutes.
-    """
-    response.headers['X-UA-Compatible'] = 'IE=Edge,chrome=1'
-    response.headers['Cache-Control'] = 'public, max-age=600'
-    return response
-
+@app.errorhandler(403)
+def bad_request(msg):
+    return make_response(jsonify({'msg': msg}), 403)
 
 @app.errorhandler(404)
-def page_not_found(error):
-    """Custom 404 page."""
-    return render_template('404.html'), 404
+def resource_not_found():
+    return make_response(jsonify({'error': 'Not found'}), 404)
+
+@app.errorhandler(401)
+def unauthorized():
+    return make_response(jsonify({'error': 'Unauthorized access'}), 401)
 
 @app.errorhandler(500)
 def server_blew_up_handler(error):
     logger.error(error)
-    return render_template('500.html'), 500
+    return make_response(jsonify({'error': 'Server error'}), 500)
 
 if __name__ == '__main__':
     app.run(debug=True)

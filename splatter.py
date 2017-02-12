@@ -34,6 +34,9 @@ class SplatService(object):
         query_filter = self.__construct_optional_query({'name': name}, doc_id)
         return self.database.APIKeys.find_one(query_filter)
 
+    def has_api_key(self, key):
+        return self.database.APIKeys.find_one({'key': key}) is not None
+
     def find_all_api_keys(self):
         return self.database.APIKeys.find()
 
